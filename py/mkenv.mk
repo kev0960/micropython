@@ -46,6 +46,7 @@ CAT = cat
 TOUCH = touch
 PYTHON = python3
 
+CROSS_COMPILE = ~/opt/cross/bin/x86_64-elf-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++

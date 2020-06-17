@@ -5,9 +5,6 @@ CROSS = 0
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 
-# MicroPython feature configurations
-MICROPY_ROM_TEXT_COMPRESSION ?= 1
-
 # include py core make definitions
 include $(TOP)/py/py.mk
 
@@ -18,6 +15,7 @@ endif
 INC += -I.
 INC += -I$(TOP)
 INC += -I$(BUILD)
+INC += -I../../../libc
 
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
@@ -26,9 +24,9 @@ CFLAGS_CORTEX_M4 = -mthumb -mtune=cortex-m4 -mcpu=cortex-m4 -msoft-float -fsingl
 CFLAGS = $(INC) -Wall -Werror -std=c99 -nostdlib $(CFLAGS_CORTEX_M4) $(COPT)
 LDFLAGS = -nostdlib -T stm32f405.ld -Map=$@.map --cref --gc-sections
 else
-LD = gcc
-CFLAGS = -m32 $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT)
-LDFLAGS = -m32 -Wl,-Map=$@.map,--cref -Wl,--gc-sections
+LD = ~/opt/cross/bin/x86_64-elf-gcc
+CFLAGS = $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -mgeneral-regs-only $(COPT)
+LDFLAGS = -Wl,--gc-sections -nostdlib -nostdinc
 endif
 
 CSUPEROPT = -Os # save some code space
@@ -41,7 +39,9 @@ CFLAGS += -Os -DNDEBUG
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
-LIBS =
+LIBC_PATH = ../../../libc/
+LIBS = printf.o malloc.o string.o crt0.o syscall.o
+LIBS := $(addprefix $(LIBC_PATH),$(LIBS))
 
 SRC_C = \
 	main.c \
@@ -61,14 +61,14 @@ OBJ = $(PY_CORE_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 ifeq ($(CROSS), 1)
 all: $(BUILD)/firmware.dfu
 else
-all: $(BUILD)/firmware.elf
+all: $(BUILD)/python
 endif
 
 $(BUILD)/_frozen_mpy.c: frozentest.mpy $(BUILD)/genhdr/qstrdefs.generated.h
 	$(ECHO) "MISC freezing bytecode"
 	$(Q)$(TOP)/tools/mpy-tool.py -f -q $(BUILD)/genhdr/qstrdefs.preprocessed.h -mlongint-impl=none $< > $@
 
-$(BUILD)/firmware.elf: $(OBJ)
+$(BUILD)/python: $(OBJ)
 	$(ECHO) "LINK $@"
 	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 	$(Q)$(SIZE) $@

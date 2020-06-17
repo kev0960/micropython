@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <syscall.h>
 #include "py/mpconfig.h"
 
 /*
@@ -17,7 +18,7 @@ typedef struct {
 int mp_hal_stdin_rx_chr(void) {
     unsigned char c = 0;
     #if MICROPY_MIN_USE_STDOUT
-    int r = read(STDIN_FILENO, &c, 1);
+    int r = read(STDIN_FILENO, (char*)&c, 1);
     (void)r;
     #elif MICROPY_MIN_USE_STM32_MCU
     // wait for RXNE
